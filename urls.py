@@ -79,6 +79,28 @@ urlpatterns += patterns('mainapp.views.ajax',
     (r'^ajax/categories/(\d+)', 'category_desc'),
 )
 
+# REST
+json_report_resource = Collection(
+    queryset = Report.objects.all(),
+    permitted_methods = ('GET', 'POST'),
+#     expose_fields = ('id','point'),
+    responder = JSONResponder()
+#     responder = JSONResponder(paginate_by = 2)
+)
+
+json_reportupdate_resource = Collection(
+    queryset = ReportUpdate.objects.all(),
+    permitted_methods = ('GET', 'POST'),
+    responder = JSONResponder()
+    #responder = JSONResponder(paginate_by = 10)
+)
+
+urlpatterns += patterns('',
+   url(r'^json/report/(.*?)/?$', json_report_resource),
+   url(r'^json/reportupdate/(.*?)/?$', json_reportupdate_resource),
+)
+
+
 #The following is used to serve up local media files like images
 if settings.LOCAL_DEV:
     baseurlregex = r'^media/(?P<path>.*)$'
