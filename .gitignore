@@ -1,3 +1,10 @@
+# Python Trash
 *.pyc
+
+# Django Customization
 local_settings.py
+
+# Excluded Directories
+tmp/
+build/
 contrib/
