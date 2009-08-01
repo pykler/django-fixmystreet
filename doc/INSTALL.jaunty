@@ -72,7 +72,7 @@ Installing Django 1.1
 
 ::
 
-  sudo easy_install django==1.1 
+  sudo easy_install django==1.1
 
 Downloading External Dependencies
 ---------------------------------
@@ -154,7 +154,7 @@ one with a suitable password.  ::
   ./manage.py syncdb
 
 Load up the tables with sample city data ::
-  
+
   ./manage.py loaddata mainapp/fixtures/initial_data.json
 
 Running the app
@@ -166,5 +166,5 @@ Finally we got here ::
 
 
 
--- 
+--
 Happy Hacking !
