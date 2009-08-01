@@ -1,0 +1,170 @@
+Installing FixMyStreet.ca in a Jaunty VM
+========================================
+
+These are instructions to get fixmystreet up and running on
+a Jaunty Virtual Machine.
+
+To create an html version of this document you may use the
+**rst2a.com** API as follows:
+
+::
+
+  mkdir build
+  curl -F "rst=@INSTALL.jaunty" http://api.rst2a.com/1.0/rst2/html?style=voidspace >build/INSTALL.html
+
+Create VM
+---------
+
+You may use any virtualization system, VirtualBox is a good
+open source one:
+
+    http://www.virtualbox.org/
+
+You also need to download an Ubuntu 9.04 server ISO from:
+
+    http://www.ubuntu.com/GetUbuntu/download
+
+This tutorial works for both 32 bit and 64 bit,
+thus pick whichever best fits your hardware.
+
+Creating and installing Ubuntu on VirtualBox is straight
+forward, the following instructions should be sufficient:
+
+    https://help.ubuntu.com/community/VirtualBox
+
+Installing Packages
+-------------------
+
+::
+
+  sudo apt-get install \
+      build-essential \
+      python-setuptools python-imaging python-libxml2 \
+      postgresql python-psycopg2 \
+      libgeos-c1 postgresql-8.3-postgis \
+      git-core subversion \
+      tofrodos
+
+Setting up environment
+----------------------
+
+::
+
+  cd ~/
+  mkdir src; # this will contain downloaded sources
+  mkdir projects; # this will contain the fimystreet project
+
+you may pick the above directories as you wish, but
+remember to use them consistently in the commands that
+follow.
+
+Downloading fixmystreet code
+----------------------------
+
+::
+
+  cd ~/projects; git clone git://github.com/visiblegovernment/django-fixmystreet.git
+  mv django-fixmystreet fixmystreet; cd fixmystreet; find . -type f \! -path '*git*' \! -name '*.png' \! -name '*.xcf' | xargs dos2unix
+
+
+Installing Django 1.1
+---------------------
+
+::
+
+  sudo easy_install django==1.1 
+
+Downloading External Dependencies
+---------------------------------
+
+::
+
+  export CONTRIB_DIR=$HOME/projects/fixmystreet/contrib
+  mkdir -p $CONTRIB_DIR # for external contrib packages
+  touch $CONTRIB_DIR/__init__.py
+
+  cd ~/src; svn checkout http://django-googleanalytics.googlecode.com/svn/trunk/ google_analytics; cp -r google_analytics/google_analytics $CONTRIB_DIR/
+  cd ~/src; svn checkout http://django-transmeta.googlecode.com/svn/trunk/ transmeta; cp -r transmeta/transmeta $CONTRIB_DIR/
+  cd ~/src; svn checkout http://django-stdimage.googlecode.com/svn/trunk stdimage; cp -r stdimage $CONTRIB_DIR/
+  cd ~/src; svn checkout http://django-rest-interface.googlecode.com/svn/trunk/ django-rest-interface; cp -r django-rest-interface/django_restapi $CONTRIB_DIR/
+
+Installing postgis data
+-----------------------
+
+edit the file */etc/postgresql/8.3/main/pg_hba.conf* as
+**root** and insert the following line in the big blank
+space in the lower middle of the file ::
+
+  local   fixmystreet fixmystreet         trust
+
+Now run the following commands ::
+
+  sudo su -c 'createuser -SDR fixmystreet' postgres
+  sudo su -c 'createdb -O fixmystreet fixmystreet' postgres
+  sudo su -c 'createlang plpgsql fixmystreet' postgres
+  sudo su -c 'psql -d fixmystreet -f /usr/share/postgresql-8.3-postgis/lwpostgis.sql' postgres
+  sudo su -c 'psql -d fixmystreet -f /usr/share/postgresql-8.3-postgis/spatial_ref_sys.sql' postgres
+
+Now confirm that the fixmystreet db has postgis installed, and find its version
+
+::
+
+  sudo su -c 'psql -d fixmystreet -c "SELECT postgis_full_version();"' postgres
+
+Change the ownership of the postgis data to the fixmystreet user
+
+::
+
+  sudo su -c 'psql -d fixmystreet -c "ALTER TABLE geometry_columns OWNER TO fixmystreet;"' postgres
+  sudo su -c 'psql -d fixmystreet -c "ALTER TABLE spatial_ref_sys OWNER TO fixmystreet;"' postgres
+
+Create local_settings.py
+------------------------
+
+To run the django fixmystreet app, it requires modifying the
+setup to match your server credentials. Conveniently you may
+do so by creating a *local_settings.py* file as follows ::
+
+    touch ~/projects/fixmystreet/local_settings.py
+
+Then open the *settings.py* and look for the section that
+is commented out while stating "*These variables Should be
+defined in the local settings file*". Copy the variables to
+the local_settings.py file and attach values to the items.
+*Note*, these should be valid python variables, all syntax
+applies.
+
+The following variables would get you started ::
+
+  DATABASE_ENGINE = 'postgresql_psycopg2'
+  DATABASE_NAME = 'fixmystreet'
+  DATABASE_USER = 'fixmystreet'
+  DATABASE_PASSWORD = ''
+  DATABASE_HOST = ''
+  DATABASE_PORT = ''
+  DEBUG = True
+
+Create database tables (and some data)
+--------------------------------------
+
+When it asks you to create a super user, create a suitable
+one with a suitable password.  ::
+
+  cd ~/projects/fixystreet
+  ./manage.py syncdb
+
+Load up the tables with sample city data ::
+  
+  ./manage.py loaddata mainapp/fixtures/initial_data.json
+
+Running the app
+---------------
+
+Finally we got here ::
+
+  ./manage.py runserver 0.0.0.0:8000
+
+
+
+-- 
+Happy Hacking !
