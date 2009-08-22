@@ -152,6 +152,7 @@ one with a suitable password.  ::
 
   cd ~/projects/fixystreet
   ./manage.py syncdb
+  ./manage.py syncdb # had to run it twice :(
 
 Load up the tables with sample city data ::
 
