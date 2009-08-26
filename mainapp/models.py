@@ -16,6 +16,7 @@ from contrib.transmeta import TransMeta
 from contrib.stdimage import StdImageField
 import libxml2
 from django.utils.encoding import iri_to_uri
+from contrib.django_restapi.model_resource import Collection
       
         
 class Province(models.Model):
@@ -297,7 +298,19 @@ class ReportMarker(GMarker):
         "The string representation is the JavaScript API call."
         return mark_safe('GMarker(%s)' % ( self.js_params))
 
-    
+
+class ReportJSON(Collection):
+
+    def read(self, request):
+        lon = request.GET["lon"]
+        lat = request.GET["lat"]
+        radius = int(request.GET.get('r', 4))
+        point_str = "POINT(%s %s)" %(lon, lat)
+        pnt = fromstr(point_str, srid=4326)
+        reports = Report.objects.filter(is_confirmed = True,point__distance_lte=(pnt,D(km=radius))).distance(pnt).order_by('distance')
+        return self.responder.list(request, reports)
+
+
 class FixMyStreetMap(GoogleMap):  
     """
         Overrides the GoogleMap class that comes with GeoDjango.  Optionally,
@@ -579,4 +592,4 @@ class PollingStation(models.Model):
 
     class Meta:
         db_table = u'polling_stations'
- 
+

@@ -3,6 +3,11 @@ from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.contrib import admin
 from mainapp.feeds import LatestReports, LatestReportsByCity, LatestReportsByWard, LatestUpdatesByReport
+from contrib.django_restapi.responder import JSONResponder
+
+# models
+from mainapp.models import Report, ReportJSON
+
 
 feeds = {
     'reports': LatestReports,
@@ -80,24 +85,16 @@ urlpatterns += patterns('mainapp.views.ajax',
 )
 
 # REST
-json_report_resource = Collection(
-    queryset = Report.objects.all(),
+json_report_resource = ReportJSON(
+    queryset=Report.objects.all(),
     permitted_methods = ('GET', 'POST'),
 #     expose_fields = ('id','point'),
     responder = JSONResponder()
 #     responder = JSONResponder(paginate_by = 2)
 )
 
-json_reportupdate_resource = Collection(
-    queryset = ReportUpdate.objects.all(),
-    permitted_methods = ('GET', 'POST'),
-    responder = JSONResponder()
-    #responder = JSONResponder(paginate_by = 10)
-)
-
 urlpatterns += patterns('',
-   url(r'^json/report/(.*?)/?$', json_report_resource),
-   url(r'^json/reportupdate/(.*?)/?$', json_reportupdate_resource),
+   url(r'^json/report/?$', json_report_resource),
 )
 
 
