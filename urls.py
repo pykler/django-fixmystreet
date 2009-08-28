@@ -81,8 +81,9 @@ urlpatterns += patterns('mainapp.views.ajax',
 )
 
 # REST Urls
-urlpatterns += patterns('mainapp.views.json',
-   url(r'^json/report/?$', 'reports_resource'),
+rest_format = r'(?P<format>\w+)'
+urlpatterns += patterns('mainapp.views.rest',
+   url(r'^rest/reports.%s$'%rest_format, 'reports_rest'),
 )
 
 
