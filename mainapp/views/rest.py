@@ -5,7 +5,11 @@ from django.contrib.gis.measure import D
 from django.forms.util import ErrorDict
 
 from mainapp.models import Report
+from mainapp import search
 
+
+class InputValidationException(Exception):
+    pass
 
 class RestCollection(Collection):
     ''' Subclasses Collection to provide multiple responders '''
@@ -33,24 +37,56 @@ class RestCollection(Collection):
         for rest resources, such that it would match one of the keys
         in self.responders
         '''
+        error_code = 400
+        errors = ErrorDict({'info': ["An error has occured"]})
         if format in self.responders:
             self.responder = self.responders[format]
-            return Collection.__call__(self, request, *args, **kwargs)
-        errors = ErrorDict(
-            {'info': ['Requested content type "%s" not available!' %format]})
-        # Using the last used responder to reutrn a 415
-        return self.responder.error(request, 415, errors)
+            try:
+                return Collection.__call__(self, request, *args, **kwargs)
+            except InputValidationException, e:
+                errors = ErrorDict({'info': [str(e)]})
+                error_code = 412
+        else:
+            error_code = 415
+            errors = ErrorDict(
+                {'info': ['Requested content type "%s" not available!' %format]})
+        # Using the last used responder to return error
+        return self.responder.error(request, error_code, errors)
 
 
 class ReportRest(RestCollection):
 
     def read(self, request):
-        lon = request.GET["lon"]
-        lat = request.GET["lat"]
-        radius = float(request.GET.get('r', 4))
-        point_str = "POINT(%s %s)" %(lon, lat)
-        pnt = fromstr(point_str, srid=4326)
-        reports = Report.objects.filter(is_confirmed = True,point__distance_lte=(pnt,D(km=radius))).distance(pnt).order_by('distance')
+        ids = request.GET.getlist("id")
+        if ids:
+            try:
+                ids = [int(id) for id in ids]
+            except (TypeError, ValueError), e:
+                raise InputValidationException(str(e))
+            reports = Report.objects.filter(id__in = ids)
+            # process ids right now
+        else:
+            lon = request.GET.get("lon")
+            lat = request.GET.get("lat")
+            address = request.GET.get("q")
+            if lat and lon:
+                point_str = "POINT(%s %s)" %(lon, lat)
+            elif address:
+                addrs = []
+                match_index = int(request.GET.get('index', -1))
+                try:
+                    point_str = search.search_address(address, match_index, addrs)
+                except search.SearchAddressDisambiguateError, e:
+                    return self.responder.error(request, 412, ErrorDict({
+                        'info': [str(e)],
+                        'possible_addresses': addrs }))
+            else:
+                raise InputValidationException('Must supply either a `q`, `lat` `lon`, or a report `id`')
+
+            radius = float(request.GET.get('r', 4))
+            pnt = fromstr(point_str, srid=4326)
+            reports = Report.objects.filter(is_confirmed = True,point__distance_lte=(pnt,D(km=radius))).distance(pnt).order_by('distance')
+
         return self.responder.list(request, reports)
 
 reports_rest = ReportRest(
